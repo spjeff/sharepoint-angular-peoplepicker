@@ -1,4 +1,4 @@
-﻿(function () {
+(function () {
 
     angular.module('sp-peoplepicker', []).directive('spPeoplePicker', function () {
         //Usage:
@@ -11,6 +11,7 @@
             scope: {
                 minEntries: '@',
                 maxEntries: '@',
+                maxSelectedPeople: '@',
                 allowDuplicates: '@',
                 showLogin: '=',
                 showTitle: '=',
@@ -23,7 +24,7 @@
                     '<div class="cam-peoplepicker-input">' +
                         '<div id="divPeoplePick" class="cam-peoplepicker-userlookup ms-fullWidth">' +
                             '<span id="spanPeoplePick"></span>' +
-                            '<input type="text" id="inputPeoplePick" class="cam-peoplepicker-edit" />' +
+                            '<input type="text" id="inputPeoplePick" class="cam-peoplepicker-edit" autocomplete="off"/>' +
                         '</div>' +
                         '<div id="divPeoplePickSearch" class="cam-peoplepicker-usersearch ms-emphasisBorder"></div>' +
                         '<input type="hidden" name="hdnPeoplePick" id="hdnPeoplePick" />' +
@@ -31,9 +32,13 @@
                 return htmlText;
             },
             controller: ['$scope', function ($scope) {
-                $scope.spContext = new SP.ClientContext($scope.appWebUrl);
-                var factory = new SP.ProxyWebRequestExecutorFactory($scope.appWebUrl);
-                $scope.spContext.set_webRequestExecutorFactory(factory);
+                if (!$scope.appWebUrl) {
+                    $scope.spContext = new SP.ClientContext();
+                } else {
+                    $scope.spContext = new SP.ClientContext($scope.appWebUrl);
+                    var factory = new SP.ProxyWebRequestExecutorFactory($scope.appWebUrl);
+                    $scope.spContext.set_webRequestExecutorFactory(factory);
+                }
             }]
         };
         return directive;
@@ -53,6 +58,8 @@
             //peoplePicker.Language = spLanguage;
             // optionally show more/less entries in the people picker dropdown, 4 is the default
             peoplePicker.MaxEntriesShown = scope.maxEntries;
+            // retrict max number of people selected
+            peoplePicker.MaxSelectedPeople = scope.maxSelectedPeople;
             // Can duplicate entries be selected (default = false)
             peoplePicker.AllowDuplicates = scope.allowDuplicates;
             // Show the user loginname
@@ -114,6 +121,7 @@
                 this.ShowTitle = true;
                 this.MinimalCharactersBeforeSearching = 2;
                 this.PrincipalType = 1;
+                this.MaxSelectedPeople = 99;
                 this.AllowDuplicates = false;
                 this.Language = "en-us";
                 this.OnSelectionChanged = null;
@@ -268,6 +276,11 @@
 
             // Add resolved user to array and updates the hidden field control with a JSON string
             PeoplePicker.prototype.PushResolvedUser = function (resolvedUser) {
+                //maxSelectedPeople
+                //if greater than or equal to, exit early
+                if (this._ResolvedUsers.length >= this.MaxSelectedPeople) {
+                    return;
+                }
 
                 if (this.AllowDuplicates) {
                     this._ResolvedUsers.push(resolvedUser);
